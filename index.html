@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fractured Dimensions</title>
+    <style>
+        body { margin: 0; font-family: Arial, sans-serif; background: #222; color: white; }
+        #game { display: flex; flex-direction: column; align-items: center; padding: 10px; }
+        canvas { border: 1px solid white; touch-action: none; }
+        #info { margin-top: 10px; font-size: 16px; }
+    </style>
+</head>
+<body>
+    <div id="game">
+        <canvas id="canvas" width="300" height="300"></canvas>
+        <div id="info">Dimension: Normal | Moves: 0</div>
+    </div>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const gridSize = 5, cellSize = 60;
+        let moves = 0, activeDim = 0;
+
+        // Three dimensions with grids and rules
+        const dimensions = [
+            { name: 'Normal', grid: Array(gridSize * gridSize).fill(0), color: '#4444ff' },
+            { name: 'Inverted', grid: Array(gridSize * gridSize).fill(0), color: '#ff4444' },
+            { name: 'Delayed', grid: Array(gridSize * gridSize).fill(0), color: '#44ff44' }
+        ];
+        let player = { x: 0, y: 0 }; // Player starts at (0,0)
+        const exit = { x: 4, y: 4 }; // Exit at (4,4)
+
+        // Initialize grids
+        dimensions[0].grid[exit.y * gridSize + exit.x] = 2; // Exit in Normal
+
+        function draw() {
+            const dim = dimensions[activeDim];
+            ctx.fillStyle = dim.color;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw grid
+            for (let y = 0; y < gridSize; y++) {
+                for (let x = 0; x < gridSize; x++) {
+                    const cell = dim.grid[y * gridSize + x];
+                    ctx.strokeStyle = 'white';
+                    ctx.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                    if (cell === 1) { // Wall
+                        ctx.fillStyle = 'gray';
+                        ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                    } else if (cell === 2) { // Exit
+                        ctx.fillStyle = 'yellow';
+                        ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                    }
+                }
+            }
+
+            // Draw player with gradient
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.beginPath();
+            ctx.arc(player.x * cellSize + cellSize / 2, player.y * cellSize + cellSize / 2, cellSize / 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Update info
+            document.getElementById('info').textContent = `Dimension: ${dim.name} | Moves: ${moves}`;
+        }
+
+        function movePlayer(dx, dy) {
+            let newX = player.x + dx, newY = player.y + dy;
+            const dim = dimensions[activeDim];
+            if (newX < 0 || newX >= gridSize || newY < 0 || newY >= gridSize || dim.grid[newY * gridSize + newX] === 1) return;
+
+            player.x = newX;
+            player.y = newY;
+            moves++;
+
+            // Apply dimension-specific rules and ripples
+            if (dim.name === 'Normal') {
+                dimensions[1].grid[player.y * gridSize + player.x] = 1; // Wall in Inverted
+            } else if (dim.name === 'Inverted') {
+                dimensions[0].grid[(gridSize - 1 - player.y) * gridSize + (gridSize - 1 - player.x)] = 1; // Mirrored wall
+            } else if (dim.name === 'Delayed') {
+                setTimeout(() => dimensions[0].grid[player.y * gridSize + player.x] = 1, 1000); // Delayed wall
+            }
+
+            draw();
+            if (dim.name === 'Normal' && player.x === exit.x && player.y === exit.y) alert('You Win!');
+        }
+
+        // Input handling (mobile and laptop)
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / cellSize);
+            const y = Math.floor((e.clientY - rect.top) / cellSize);
+            const dx = x - player.x, dy = y - player.y;
+            if (Math.abs(dx) + Math.abs(dy) === 1) movePlayer(dx, dy);
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowUp') movePlayer(0, -1);
+            if (e.key === 'ArrowDown') movePlayer(0, 1);
+            if (e.key === 'ArrowLeft') movePlayer(-1, 0);
+            if (e.key === 'ArrowRight') movePlayer(1, 0);
+            if (e.key === '1') activeDim = 0, draw();
+            if (e.key === '2') activeDim = 1, draw();
+            if (e.key === '3') activeDim = 2, draw();
+        });
+
+        draw(); // Initial render
+    </script>
+</body>
+</html>
